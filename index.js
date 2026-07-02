@@ -8,6 +8,7 @@ import { calculateMonteCarlo } from './utils/monteCarlo.js';
 dotenv.config();
 
 const app = express();
+
 app.use(
   cors({
     origin: [
@@ -18,16 +19,17 @@ app.use(
     credentials: true,
   }),
 );
+
 app.use(express.json());
 
-// Роут 1: Расчет и сохранение
+// Роут 1: Розрахунок та збереження
 app.post('/api/calculate', async (req, res) => {
   try {
     const { deviceId, inputs } = req.body;
     if (!deviceId || !inputs) {
       return res
         .status(400)
-        .json({ message: 'Отсутствуют обязательные данные' });
+        .json({ message: "Відсутні обов'язкові дані для розрахунку" });
     }
 
     const { chartData, summary } = calculateMonteCarlo(inputs);
@@ -42,25 +44,26 @@ app.post('/api/calculate', async (req, res) => {
     await newCalculation.save();
     res.status(201).json(newCalculation);
   } catch (error) {
-    console.error('Ошибка калькуляции:', error);
-    res.status(500).json({ message: 'Внутренняя ошибка сервера при расчете' });
+    console.error('Помилка калькуляції:', error);
+    res
+      .status(500)
+      .json({ message: 'Внутрішня помилка сервера під час розрахунку' });
   }
 });
 
-// Роут 2: Получение истории по deviceId
+// Роут 2: Отримання історії за deviceId
 app.get('/api/history/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
-    // Отдаем последние 10 расчетов, сортировка от новых к старым
     const history = await Calculation.find({ deviceId })
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('-chartData'); // Не тянем тяжелые массивы графиков для списка
+      .select('-chartData');
 
     res.status(200).json(history);
   } catch (error) {
-    console.error('Ошибка получения истории:', error);
-    res.status(500).json({ message: 'Ошибка при загрузке истории' });
+    console.error('Помилка отримання історії:', error);
+    res.status(500).json({ message: 'Помилка під час завантаження історії' });
   }
 });
 
@@ -68,7 +71,7 @@ const PORT = process.env.PORT || 5000;
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('MongoDB подключена');
-    app.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
+    console.log('✅ MongoDB успішно підключена');
+    app.listen(PORT, () => console.log(`🚀 Сервер запущено на порту ${PORT}`));
   })
-  .catch((err) => console.error('Ошибка подключения к БД:', err));
+  .catch((err) => console.error('❌ Помилка підключення до БД:', err));
