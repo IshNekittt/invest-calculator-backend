@@ -8,7 +8,16 @@ import { calculateMonteCarlo } from './utils/monteCarlo.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      'https://invest-calculator-frontend.vercel.app',
+      'http://localhost:5173',
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Роут 1: Расчет и сохранение
