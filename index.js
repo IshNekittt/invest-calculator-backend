@@ -26,10 +26,46 @@ app.use(express.json());
 app.post('/api/calculate', async (req, res) => {
   try {
     const { deviceId, inputs } = req.body;
+
     if (!deviceId || !inputs) {
       return res
         .status(400)
         .json({ message: "Відсутні обов'язкові дані для розрахунку" });
+    }
+
+    const { initial, monthly, expectedReturn, volatility, inflation, years } =
+      inputs;
+
+    const values = [
+      initial,
+      monthly,
+      expectedReturn,
+      volatility,
+      inflation,
+      years,
+    ];
+    if (values.some((val) => typeof val !== 'number' || isNaN(val))) {
+      return res
+        .status(400)
+        .json({ message: 'Усі поля повинні бути валідними числами' });
+    }
+
+    if (years < 1 || years > 50 || !Number.isInteger(years)) {
+      return res
+        .status(400)
+        .json({ message: 'Термін має бути цілим числом від 1 до 50 років' });
+    }
+    if (initial < 0 || monthly < 0 || volatility < 0) {
+      return res.status(400).json({
+        message:
+          'Капітал, поповнення та волатильність не можуть бути менше нуля',
+      });
+    }
+
+    if (initial > 1000000000 || monthly > 1000000000) {
+      return res
+        .status(400)
+        .json({ message: 'Суми занадто великі для розрахунку' });
     }
 
     const { chartData, summary } = calculateMonteCarlo(inputs);
