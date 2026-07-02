@@ -1,9 +1,9 @@
-function randomNormal(mean, stdDev) {
-  let u1 = Math.random();
-  let u2 = Math.random();
-  let randStdNormal =
-    Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
-  return mean + stdDev * randStdNormal;
+function randomNormal() {
+  let u = 0,
+    v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
 export function calculateMonteCarlo({
@@ -14,36 +14,62 @@ export function calculateMonteCarlo({
   inflation,
   years,
 }) {
-  const simulations = 500;
+  const SIMULATIONS = 2000;
+  const months = Math.floor(years * 12);
+
+  const mu = Number(expectedReturn) / 100 / 12;
+  const sigma = Number(volatility) / 100 / Math.sqrt(12);
+  const monthlyInflationRate = Number(inflation) / 100 / 12;
+
+  const drift = mu - 0.5 * sigma * sigma;
+
   const results = [];
 
-  for (let i = 0; i < simulations; i++) {
-    let currentBalance = Number(initial);
-    let simHistory = [currentBalance];
+  for (let i = 0; i < SIMULATIONS; i++) {
+    let currentNominalBalance = Number(initial);
+    let currentMonthlyContribution = Number(monthly);
 
-    for (let year = 1; year <= years; year++) {
-      const randomReturn =
-        randomNormal(Number(expectedReturn), Number(volatility)) / 100;
-      currentBalance =
-        currentBalance * (1 + randomReturn) + Number(monthly) * 12;
-      const realBalance =
-        currentBalance / Math.pow(1 + Number(inflation) / 100, year);
-      simHistory.push(realBalance);
+    let simHistory = [Number(initial)];
+
+    for (let month = 1; month <= months; month++) {
+      // 1. Рыночный шаг (GBM)
+      const shock = sigma * randomNormal();
+      const monthlyReturn = Math.exp(drift + shock);
+
+      currentNominalBalance =
+        currentNominalBalance * monthlyReturn + currentMonthlyContribution;
+
+      currentMonthlyContribution *= 1 + monthlyInflationRate;
+
+      if (month % 12 === 0) {
+        const discountFactor = Math.pow(1 + monthlyInflationRate, month);
+        const realBalance = currentNominalBalance / discountFactor;
+
+        simHistory.push(Math.round(realBalance));
+      }
     }
     results.push(simHistory);
   }
 
   const chartData = [];
-  for (let year = 0; year <= years; year++) {
-    const yearValues = results.map((sim) => sim[year]).sort((a, b) => a - b);
+  const steps = results[0].length;
+
+  for (let t = 0; t < steps; t++) {
+    const yearValues = new Float64Array(SIMULATIONS);
+    for (let k = 0; k < SIMULATIONS; k++) {
+      yearValues[k] = results[k][t];
+    }
+    yearValues.sort();
+
     chartData.push({
-      year: year,
-      worstCase: Math.round(yearValues[Math.floor(simulations * 0.1)]),
-      median: Math.round(yearValues[Math.floor(simulations * 0.5)]),
-      bestCase: Math.round(yearValues[Math.floor(simulations * 0.9)]),
+      year: t,
+      worstCase: Math.round(yearValues[Math.floor(SIMULATIONS * 0.1)]),
+      median: Math.round(yearValues[Math.floor(SIMULATIONS * 0.5)]),
+      bestCase: Math.round(yearValues[Math.floor(SIMULATIONS * 0.9)]),
     });
   }
 
   const finalYear = chartData[chartData.length - 1];
+
   return { chartData, summary: finalYear };
 }
