@@ -71,5 +71,14 @@ export function calculateMonteCarlo({
 
   const finalYear = chartData[chartData.length - 1];
 
-  return { chartData, summary: finalYear };
+  const totalInvested = Number(initial) + Number(monthly) * 12 * Number(years);
+  const pureProfitMedian = finalYear.median - totalInvested;
+
+  const summary = {
+    ...finalYear,
+    totalInvested: Math.round(totalInvested),
+    pureProfitMedian: Math.round(pureProfitMedian),
+  };
+
+  return { chartData, summary };
 }
